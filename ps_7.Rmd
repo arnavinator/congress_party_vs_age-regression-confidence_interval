@@ -22,7 +22,7 @@ data <- read_csv("raw-data/HSall_members.csv")
 
 ## Question 1: Conduct exploratory data analysis
 
-1a)
+1A) Summary Statistics
 ```{r p1, echo = FALSE}
 
 # filtering data for both chambers of 116th congress, looking at only Dems and
@@ -33,7 +33,7 @@ data <- read_csv("raw-data/HSall_members.csv")
 # by 100 so that '50 is someone at the 50th percentile'). Finally, I selected
 # for desired cols and used skim()
 
-data %>% 
+data <- data %>% 
   filter(chamber == "Senate" | chamber == "House") %>% 
   filter(congress == 116) %>% 
   filter(party_code == 100 | party_code == 200) %>% 
@@ -44,16 +44,57 @@ data %>%
   ) %>%
   unnest(party) %>% 
   mutate(age = 2019 - born) %>% 
-  mutate(nominate_percentile = percent_rank(nominate_dim1)*100) %>% 
+  mutate(nominate_percentile = percent_rank(nominate_dim1)*100)
+
+data %>% 
   select(nominate_percentile, age) %>% 
   skim()
   
 
 ```
 
-1b) 
+1B) Visualizing a single variable 
 
 ```{r p2, echo = FALSE}
+
+# made a plot exploring age distribution of congressmen in 116th congress,
+# facetting data by party to see if there is a difference between age
+# distribution between the parties (giving insight to whether there are more
+# older people in the more conservative Republican party). The graphic shows
+# that the age demographics for both parties is more or less similar, but the
+# Republican party seems to have more people in the higher-aged bars of the
+# histogram
+
+ggplot(data, aes(x = age, fill = party)) +
+  geom_histogram(bins = 15) +
+  facet_wrap(~ party) +
+  scale_fill_manual(values = c("steelblue", "red")) +
+  labs(title = "Age Distribution of 116th Congress",
+       subtitle = "Facetted by Democrats and Republicans",
+       x = "Age in Years",
+       y = "Number of Congressmen", 
+       fill = "Party") +
+  theme_classic()
+
+
+# this second plot graphing the nominate_percentile shows that a congressman's
+# likelihood of having a fixed conservative ideaology is very strongly
+# associated with their party affiliation. The chart also shows that the total
+# distribution of Congress is very even, and there is a very slight majority in
+# Democratic Party dominance. Finally, this graph shows that there are more
+# moderate Democrats at the 50 percentile mark than there are moderate
+# Republicans
+
+ggplot(data, aes(x = nominate_percentile, fill = party)) +
+  geom_histogram(bins = 30) +
+  scale_fill_manual(values = c("steelblue", "red")) +
+  labs(title = "Economic Liberalism-Conservativism of 116th Congress",
+       subtitle = "Distribution of economic liberal-conservative in relation to party-affiliation",
+       x = "Percentile distribution along Economic Liberalism-Conservatism spectrum",
+       y = "Number of Congressmen",
+       fill = "Party") 
+
+
 
 ```
 

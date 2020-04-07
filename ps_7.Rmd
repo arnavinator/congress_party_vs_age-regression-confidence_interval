@@ -108,7 +108,7 @@ ggplot(modern, aes(x = nominate_percentile, fill = party)) +
 modern %>% 
   summarize(correlation = cor(age, nominate_percentile))
 ```
-A negative coefficient indicates a that as age increases, the nominate_percentile value for a congressmen tends to go decrease (following a straight line), while a positive coefficient indicates a that as age increases, the nominate_percentile value for a congressmen tends to go increase (following a straight line).
+A negative coefficient indicates that as age increases, the nominate_percentile value for a congressmen tends to go decrease (following a straight line), while a positive coefficient indicates that as age increases, the nominate_percentile value for a congressmen tends to go increase (following a straight line).
 
 
 
@@ -140,7 +140,7 @@ ggplot(modern, aes(x = age, y = nominate_percentile)) +
 
 ```{r q2a, echo = FALSE}
 
-# filter congress dataset to democrats only for the 116th congress. Then, using
+# filter modern dataset to democrats only. Then, using
 # lm() and tidy(), we construct the linear regression model and use gt() to make
 # the table look pretty
 
@@ -152,9 +152,11 @@ lm(nominate_percentile ~ age, data = dems) %>%
   tidy(conf.int = TRUE) %>% 
   select(term, estimate, conf.low, conf.high) %>% 
   gt() %>% 
-  tab_header(title = "Effect of Age on DW Nominate Percentile",
-             subtitle = "Higher percentile suggests more conservative") %>% 
-  cols_label(term = "Value",
+  tab_header(title = "Effect of Age on DW Nominate Percentile") %>% 
+  tab_spanner(label = "Higher percentile suggests more conservative",
+              columns = vars(term, estimate, conf.low, conf.high)
+  ) %>% 
+  cols_label(term = "Variable",
              estimate = "Estimate",
              conf.low = "Lower bound",
              conf.high = "Higher bound"
@@ -165,7 +167,7 @@ lm(nominate_percentile ~ age, data = dems) %>%
 
 2B) Interpreting results
 
-The average treatment effect of increasing a congressman's age by 1 year is -0.33: the effect of a democratic member of Congress being one year older is associated with a their percentile rank for DW nominate scores decreasing by -0.33. We should not necessarily interpret the correlation that older democratic senators are less conservative as causal, as there are potential confounding factors. For instance, it is possible that more time spent in Congress makes congressmen more liberal; then, age is not the causal factor of making congressmen more conservative, rather it is the number of years a congressman has spent in Congress which affects how liberal they are. Although it is more likely that incumbent democrats will be older, age is then not the causal factor of growing liberalism, but years spent as an incumbent is the causal factor of growing liberalism.
+The average treatment effect of increasing a congressman's age by 1 year is -0.33: the effect of a democratic member of Congress being one year older is associated with a their percentile rank for DW nominate scores decreasing by 0.33. We should not necessarily interpret the correlation that older democratic senators are less conservative as causal, as there can be confounding factors. For instance, it is possible that more time spent in Congress makes congressmen more liberal; then, age is not the causal factor of making congressmen less conservative, rather it is the number of years a congressman has spent in Congress which affects how liberal they are. Although it is more likely that incumbent democrats will be older, age is then not the causal factor of growing liberalism, but years spent as an incumbent is the causal factor of growing liberalism.
 We calculate confidence intervals to determine the strength of our correlation estimate between age and percentile rank. If confidence interval around the estimate was large, then our estimate would be weaker (such that while our estimate is negative, with a large interval upper bound, it is possible that the correlation is actually zero/negative, which changes our interpretation).
 
 
@@ -178,6 +180,43 @@ We are comparing the potential outcome of conservatism/liberalism for congressme
 
 ```{r q3a, echo = FALSE}
 
+# create a column which calculates age for every democratic congressman during
+# whatever time period of congress they were in by calculating the starting year
+# of every congress (where a new congress occurs every 2 years), and then
+# subtracting that number from the year they were born. I also reused code for
+# nominate_percentile
+
+all <- data %>% 
+  filter(chamber == "Senate" | chamber == "House") %>% 
+  filter(party_code == 100) %>% 
+  mutate(age = (1787 + 2*congress) - born) %>% 
+  mutate(nominate_percentile = percent_rank(nominate_dim1)*100) %>% 
+  select(congress, chamber, age, nominate_percentile) %>%
+  group_by(congress) %>% 
+  nest()
+
+
+# similar to textbook, use map to perform lm() on every nested tibble, extract
+# the coeff of correlation for each congress, and the se. Then use the se to
+# create confidence intervals around every estimate. Plot using ggplot and
+# demonstrate confidence intervals with geom_errorbar
+
+all <- all %>% 
+  mutate(mod = map(data, ~ lm(nominate_percentile ~ age, data = .))) %>% 
+  mutate(reg_results = map(mod, ~ tidy(.))) %>% 
+  mutate(coef = map_dbl(reg_results, ~ filter(., term == "age") %>% pull(estimate))) %>% 
+  mutate(se = map_dbl(reg_results, ~ filter(., term == "age") %>% pull(std.error))) %>% 
+  mutate(upper = coef + se*1.96) %>% 
+  mutate(lower = coef - se*1.96)
+
+ggplot(all, aes(x = congress, y = coef)) +
+  geom_point(color = "blue") +
+  geom_errorbar(aes(x = congress, ymin = lower, ymax = upper), color = "blue") +
+  theme_classic() +
+  labs(title = "Average Treatment Effect of Age on Conservatism \nAmong Democrats Over Time",
+       subtitle = "Scores use DW Nominate Dimension 1 \n95% Confidence Interval",
+       x = "Congress",
+       y = "Estimate")
 
 
 ```

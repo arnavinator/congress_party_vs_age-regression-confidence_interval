@@ -1,0 +1,59 @@
+---
+title: "ps_7"
+author: "Arnav Srivastava"
+date: "4/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# loading relavent libraries for data processing and cleaning
+
+library(tidyverse)
+library(skimr)
+library(readr)
+
+
+# reading data set NOMINATE, which is in raw-data folder
+
+data <- read_csv("raw-data/HSall_members.csv")
+```
+
+## Question 1: Conduct exploratory data analysis
+
+1a)
+```{r p1, echo = FALSE}
+
+# filtering data for both chambers of 116th congress, looking at only Dems and
+# Reps. I use map to put a name to whether a congressman is Dem or Rep (but
+# since I used map, I needed to unnest the list in order to see the values). I
+# then calculated age of each congressman (subtracted birth year from 2019) and
+# their percentile of nominate_dim1 (using function percent_rank and multiplying
+# by 100 so that '50 is someone at the 50th percentile'). Finally, I selected
+# for desired cols and used skim()
+
+data %>% 
+  filter(chamber == "Senate" | chamber == "House") %>% 
+  filter(congress == 116) %>% 
+  filter(party_code == 100 | party_code == 200) %>% 
+  mutate(party = map(party_code, ~ ifelse(. == 100,
+                                          "Democrat",
+                                          "Republican")
+                     )
+  ) %>%
+  unnest(party) %>% 
+  mutate(age = 2019 - born) %>% 
+  mutate(nominate_percentile = percent_rank(nominate_dim1)*100) %>% 
+  select(nominate_percentile, age) %>% 
+  skim()
+  
+
+```
+
+1b) 
+
+```{r p2, echo = FALSE}
+
+```
+
